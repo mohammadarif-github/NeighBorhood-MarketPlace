@@ -2,7 +2,7 @@ from django.shortcuts import render,redirect
 
 # Create your views here.
 from .models import Category,Listing,User,Transaction
-from .serializers import CategorySerializer,UserSerializer,TransactionSerializer,ListingSerializer,LoginSerializer,TransactionCreateSerializer
+from .serializers import CategorySerializer,UserSerializer,TransactionSerializer,ListingSerializer,TransactionCreateSerializer,CustomTokenObtainPairSerializer
 from rest_framework import generics,viewsets,permissions,status
 from django.contrib.auth import login,logout,authenticate
 from rest_framework.permissions import IsAuthenticated
@@ -13,14 +13,29 @@ from rest_framework.authtoken.models import Token
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.hashers import make_password
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 
+
+
+
+from rest_framework.exceptions import ValidationError
 
 class RegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes=[permissions.AllowAny]
+    permission_classes = [permissions.AllowAny]
     
     def perform_create(self, serializer):
+        username = self.request.data.get('username')
+        email = self.request.data.get('email')
+
+        if User.objects.filter(username=username).exists():
+            raise ValidationError({'username': ['This username is already taken.']})
+        if User.objects.filter(email=email).exists():
+            raise ValidationError({'email': ['This email is already registered.']})
+
         raw_password = self.request.data.get('password')
         encrypted_pass = make_password(raw_password)
         serializer.save(password=encrypted_pass)
@@ -64,8 +79,6 @@ class UserListingView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return Listing.objects.filter(user=user)
-        # if user.is_staff:  # Check if the user is an admin
-        #     return Listing.objects.all()
     
     
 class TransactionView(viewsets.ModelViewSet):
@@ -97,29 +110,22 @@ class TransactionView(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have permission to perform this action.")
 
 
-
-class LoginApiView(APIView):
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            username = serializer.validated_data['username']
-            password = serializer.validated_data['password']
-
-            user = authenticate(username=username, password=password)
-
-            if user:
-                token, _ = Token.objects.get_or_create(user=user)
-                print(token)
-                print(_)
-                login(request, user)
-                return Response({'token': token.key, 'user_id': user.id})
-            else:
-                return Response({'error': "Invalid Credential"})
-        return Response(serializer.errors)
-
-
+class LoginApiView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+    
 class LogoutApiView(APIView):
-    def get(self, request):
-        request.user.auth_token.delete()
-        logout(request)
-        return redirect('login')
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh_token")
+            if not refresh_token:
+                return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            logout(request)
+            return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
