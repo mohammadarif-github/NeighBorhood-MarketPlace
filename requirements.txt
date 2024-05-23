@@ -12,11 +12,13 @@ django-filter
 django-jazzmin
 django-tinymce
 djangorestframework
+djangorestframework-simplejwt
 idna
 Markdown
 pillow
 psycopg2
 psycopg2-binary
+PyJWT
 python-decouple
 pytz
 requests
