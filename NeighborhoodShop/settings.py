@@ -61,7 +61,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5500","https://mohammadarif-github.github.io",
+    "http://127.0.0.1:5500","https://mohammadarif-github.github.io","https://neighborhood-marketplace-869o.onrender.com",
 ]
 
 ROOT_URLCONF = 'NeighborhoodShop.urls'
