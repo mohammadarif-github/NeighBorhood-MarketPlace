@@ -50,13 +50,13 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         if self.request.user == self.get_object():
             serializer.save()
         else :
-            raise PermissionDenied("You do not have permission to perform this action.")
+            raise PermissionDenied("s")
 
 
 class ListingView(viewsets.ModelViewSet):
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     
     def perform_create(self,serializer):
         serializer.save(user=self.request.user)
@@ -75,7 +75,7 @@ class ListingView(viewsets.ModelViewSet):
 
 class UserListingView(generics.ListAPIView):
     serializer_class = ListingSerializer
-
+    
     def get_queryset(self):
         user = self.request.user
         return Listing.objects.filter(user=user)
